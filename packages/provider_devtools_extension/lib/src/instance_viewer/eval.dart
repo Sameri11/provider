@@ -27,7 +27,7 @@ void setServiceConnectionForProviderScreen(VmService service) {
 /// this ensures that providers reload properly when the devtool is connected
 /// to a different application.
 final serviceProvider = StreamProvider<VmService>((ref) async* {
-  yield serviceManager.service!;
+  // yield serviceManager.service!;
   yield* _serviceConnectionStream;
 });
 

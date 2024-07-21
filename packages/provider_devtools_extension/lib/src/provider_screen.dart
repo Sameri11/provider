@@ -12,6 +12,7 @@ import 'instance_viewer/instance_providers.dart';
 import 'instance_viewer/instance_viewer.dart';
 import 'provider_list.dart';
 import 'provider_nodes.dart';
+import 'instance_viewer/eval.dart';
 
 final _hasErrorProvider = Provider.autoDispose<bool>((ref) {
   if (ref.watch(sortedProviderNodesProvider) is AsyncError) return true;
@@ -42,7 +43,7 @@ class ProviderScreenBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final splitAxis = Split.axisFor(context, 0.85);
+    final splitAxis = SplitPane.axisFor(context, 0.85);
 
     // A provider will automatically be selected as soon as one is detected
     final selectedProviderId = ref.watch(selectedProviderIdProvider);
@@ -53,59 +54,76 @@ class ProviderScreenBody extends ConsumerWidget {
     ref.listen<bool>(_hasErrorProvider, (_, hasError) {
       if (hasError) showProviderErrorBanner();
     });
+    final currentVmService = ref.watch(serviceProvider);
+    serviceManager.connectedState.addListener(() {
+      setServiceConnectionForProviderScreen(serviceManager.service!);
+    });
 
-    return Split(
-      axis: splitAxis,
-      initialFractions: const [0.33, 0.67],
-      children: [
-        const RoundedOutlinedBorder(
-          clip: true,
-          child: Column(
-            children: [
-              AreaPaneHeader(
-                roundedTopBorder: false,
-                includeTopBorder: false,
-                title: Text('Providers'),
-              ),
-              Expanded(
-                child: ProviderList(),
-              ),
-            ],
-          ),
-        ),
-        RoundedOutlinedBorder(
-          clip: true,
-          child: Column(
-            children: [
-              AreaPaneHeader(
-                roundedTopBorder: false,
-                includeTopBorder: false,
-                title: Text(detailsTitleText),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: () {
-                      unawaited(
-                        showDialog(
-                          context: context,
-                          builder: (_) => _StateInspectorSettingsDialog(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              if (selectedProviderId != null)
-                Expanded(
-                  child: InstanceViewer(
-                    rootPath: InstancePath.fromProviderId(selectedProviderId),
-                    showInternalProperties: ref.watch(_showInternals),
-                  ),
+    // This change needed for extension to work in simulated environment
+    // since new option `requiresConnection` to config.yml
+    // not works in this config and it is needed to check connection
+    // inside plugin itself.
+
+    return currentVmService.when(
+      error: (_, __) => const Center(
+        child: Text('Please connect an app to use this DevTools Extension'),
+      ),
+      loading: () => const Center(
+        child: Text('Please connect an app to use this DevTools Extension'),
+      ),
+      data: (data) => SplitPane(
+        axis: splitAxis,
+        initialFractions: const [0.33, 0.67],
+        children: [
+          const RoundedOutlinedBorder(
+            clip: true,
+            child: Column(
+              children: [
+                AreaPaneHeader(
+                  roundedTopBorder: false,
+                  includeTopBorder: false,
+                  title: Text('Providers'),
                 ),
-            ],
+                Expanded(
+                  child: ProviderList(),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          RoundedOutlinedBorder(
+            clip: true,
+            child: Column(
+              children: [
+                AreaPaneHeader(
+                  roundedTopBorder: false,
+                  includeTopBorder: false,
+                  title: Text(detailsTitleText),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      onPressed: () {
+                        unawaited(
+                          showDialog(
+                            context: context,
+                            builder: (_) => _StateInspectorSettingsDialog(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                if (selectedProviderId != null)
+                  Expanded(
+                    child: InstanceViewer(
+                      rootPath: InstancePath.fromProviderId(selectedProviderId),
+                      showInternalProperties: ref.watch(_showInternals),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

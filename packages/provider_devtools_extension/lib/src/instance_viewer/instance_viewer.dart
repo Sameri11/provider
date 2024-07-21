@@ -10,6 +10,8 @@ import 'dart:math' as math;
 import 'package:devtools_app_shared/service.dart';
 import 'package:devtools_app_shared/ui.dart';
 import 'package:devtools_app_shared/utils.dart';
+import 'package:devtools_extensions/api.dart';
+import 'package:devtools_extensions/devtools_extensions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +120,7 @@ class _InstanceViewerState extends ConsumerState<InstanceViewer> {
 
   Iterable<Widget> _buildError(
     Object error,
-    StackTrace? _,
+    StackTrace? stack,
     InstancePath __,
   ) {
     if (error is SentinelException) {
@@ -126,7 +128,10 @@ class _InstanceViewerState extends ConsumerState<InstanceViewer> {
       if (valueAsString != null) return [Text(valueAsString)];
     }
 
-    return const [Text('<unknown error>')];
+    extensionManager.postMessageToDevTools(DevToolsExtensionEvent(
+        DevToolsExtensionEventType.unknown,
+        data: {'stacktrace': stack.toString(), 'error': error.toString()}));
+    return [Text('<unknown error>\n$stack')];
   }
 
   Iterable<Widget?> _buildListViewItems(
